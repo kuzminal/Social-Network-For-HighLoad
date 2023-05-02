@@ -17,4 +17,14 @@ type UserInfo struct {
 	Birthdate  string `json:"birthdate"`
 	Biography  string `json:"biography"`
 	City       string `json:"city"`
+	Password   string `json:"-"`
+}
+
+type AuthInfo struct {
+	Id       string `json:"id"`
+	Password string `json:"password"`
+}
+
+type RegisterResult struct {
+	UserId string `json:"user_id"`
 }

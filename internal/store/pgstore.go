@@ -3,6 +3,7 @@ package store
 import (
 	"SocialNetHL/models"
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"fmt"
 	"github.com/gofrs/uuid"
@@ -78,18 +79,17 @@ func (pg *postgres) SaveUser(ctx context.Context, user *models.RegisterUser) (id
 		"birthDate":  bDate,
 		"biography":  user.Biography,
 		"city":       user.City,
-		"password":   user.Password,
+		"password":   fmt.Sprintf("%x", sha256.Sum256([]byte(user.Password))),
 	}
 	_, err = pg.db.Exec(ctx, query, args)
 	if err != nil {
 		return "", fmt.Errorf("unable to insert row: %w", err)
 	}
-
 	return id, nil
 }
 
 func (pg *postgres) LoadUser(ctx context.Context, id string) (usersInfo models.UserInfo, err error) {
-	query := `SELECT id, first_name, second_name, age, birthdate, biography, city FROM social.users WHERE id = $1`
+	query := `SELECT id, first_name, second_name, age, birthdate, biography, city, password FROM social.users WHERE id = $1`
 
 	row := pg.db.QueryRow(ctx, query, id)
 	if err != nil {
@@ -97,12 +97,43 @@ func (pg *postgres) LoadUser(ctx context.Context, id string) (usersInfo models.U
 	}
 	var bDate time.Time
 	user := models.UserInfo{}
-	err = row.Scan(&user.Id, &user.FirstName, &user.SecondName, &user.Age, &bDate, &user.Biography, &user.City)
+	err = row.Scan(&user.Id, &user.FirstName, &user.SecondName, &user.Age, &bDate, &user.Biography, &user.City, &user.Password)
 	if err != nil {
 		return models.UserInfo{}, fmt.Errorf("unable to scan row: %w", err)
 	}
 	user.Birthdate = bDate.Format("2006-01-02")
 	return user, nil
+}
+
+func (pg *postgres) LoadSession(ctx context.Context, token string) (string, error) {
+	query := `SELECT user_id FROM social.session WHERE token = $1`
+
+	row := pg.db.QueryRow(ctx, query, token)
+
+	var userId string
+	err := row.Scan(&userId)
+	if err != nil {
+		return "", fmt.Errorf("unable to scan row: %w", err)
+	}
+	return userId, nil
+}
+
+func (pg *postgres) CreateSession(ctx context.Context, m *models.AuthInfo) (string, error) {
+	query := `INSERT INTO social.session (user_id, token, created_at) 
+VALUES (@user_id, @token, @created_at)
+ON CONFLICT (user_id) DO UPDATE
+  SET created_at = now()
+returning token;`
+	authToken := uuid.Must(uuid.NewV4()).String()
+	args := pgx.NamedArgs{
+		"user_id":    m.Id,
+		"token":      authToken,
+		"created_at": time.Now(),
+	}
+	var token string
+	_ = pg.db.QueryRow(ctx, query, args).Scan(&token)
+
+	return token, nil
 }
 
 func calculateAge(bDate time.Time) int {
