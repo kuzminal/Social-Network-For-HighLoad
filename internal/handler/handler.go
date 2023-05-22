@@ -18,7 +18,7 @@ func (i *Instance) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("Bad request body given"))
 		return
 	}
-	saveUser, err := i.store.SaveUser(context.Background(), &user)
+	saveUser, err := i.store.SaveUser(context.Background(), user)
 	if err != nil {
 		return
 	}
@@ -30,8 +30,8 @@ func (i *Instance) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	user, _ := i.store.LoadUser(context.Background(), id)
 	userDTO, _ := json.Marshal(user)
-	w.Write(userDTO)
 	w.WriteHeader(http.StatusOK)
+	w.Write(userDTO)
 }
 
 func (i *Instance) HandleLogin(w http.ResponseWriter, r *http.Request) {
@@ -56,4 +56,22 @@ func (i *Instance) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusUnauthorized)
 	}
+}
+
+func (i *Instance) HandleSearchUser(w http.ResponseWriter, r *http.Request) {
+	var userSearchRequest models.UserSearchRequest
+	firstName := r.URL.Query().Get("first_name")
+	lastName := r.URL.Query().Get("last_name")
+	if len(firstName) > 0 || len(lastName) > 0 {
+		userSearchRequest.LastName = lastName
+		userSearchRequest.FirstName = firstName
+		users, _ := i.store.SearchUser(context.Background(), userSearchRequest)
+		userDTO, _ := json.Marshal(users)
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(userDTO)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+	}
+
 }

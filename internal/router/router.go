@@ -13,6 +13,7 @@ func NewRouter(i *handler.Instance) http.Handler {
 		r.Use(i.BasicAuth)
 		r.Post("/user/register", i.HandleRegister)
 		r.Get("/user/get/{id}", i.HandleGetUser)
+		r.Get("/user/search", i.HandleSearchUser)
 	})
 
 	r.Post("/login", i.HandleLogin)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"SocialNetHL/internal/handler"
+	_ "SocialNetHL/internal/migrations/go"
 	"SocialNetHL/internal/router"
 	"SocialNetHL/internal/store"
 	"context"
