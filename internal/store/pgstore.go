@@ -144,10 +144,10 @@ func (pg *postgres) SearchUser(ctx context.Context, request models.UserSearchReq
 	if err != nil {
 		return []models.UserInfo{}, fmt.Errorf("unable to query users: %w", err)
 	}
-
+	user := models.UserInfo{}
 	for rows.Next() {
 		var bDate time.Time
-		user := models.UserInfo{}
+		//user := models.UserInfo{}
 		err = rows.Scan(&user.Id, &user.FirstName, &user.SecondName, &user.Age, &bDate, &user.Biography, &user.City, &user.Password)
 		if err != nil {
 			log.Printf("unable to scan row: %v", err)
