@@ -2,10 +2,11 @@ version: '3.8'
 
 services:
   social-app:
+    container_name: dockerdev
     build:
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile-dev
       context: .
-    entrypoint: /usr/bin/social
+    entrypoint: /dlv --listen=:40000 --headless=true --api-version=2 --accept-multiclient exec /usr/bin/social
     restart: on-failure
     environment:
       - PGHOST=db
@@ -13,6 +14,9 @@ services:
       - MIGR_DIR=/usr/bin/migrations
     ports:
       - "8080:8080"
+      - "40000:40000"
+    depends_on:
+      - db
   db:
     image: postgres:14.1-alpine
     restart: always
