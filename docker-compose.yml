@@ -22,7 +22,31 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - db:/var/lib/postgresql/data
+      - /data/master:/var/lib/postgresql/data
+  slave:
+    image: postgres:14.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - /data/pgslave:/var/lib/postgresql/data
+  asyncslave:
+    image: postgres:14.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - /data/pgasyncslave:/var/lib/postgresql/data
 volumes:
   db:
+    driver: local
+  slave:
+    driver: local
+  asyncslave:
     driver: local

@@ -1,6 +1,7 @@
 package _go
 
 import (
+	"SocialNetHL/internal/helper"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/csv"
@@ -20,10 +21,7 @@ func init() {
 
 func upGenerateUserData(tx *sql.Tx) error {
 	// This code is executed when the migration is applied.
-	migrationsDir := os.Getenv("MIGR_DIR")
-	if len(migrationsDir) == 0 {
-		migrationsDir = "./internal/migrations"
-	}
+	migrationsDir := helper.GetEnvValue("MIGR_DIR", "./internal/migrations")
 	file, err := os.Open(migrationsDir + "/go/people.csv")
 	if err != nil {
 		panic(err)

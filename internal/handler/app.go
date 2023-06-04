@@ -3,11 +3,13 @@ package handler
 import "SocialNetHL/internal/store"
 
 type Instance struct {
-	store store.Store
+	store        store.Store
+	readStorages *store.ReadNodes
 }
 
-func NewInstance(storage store.Store) *Instance {
+func NewInstance(writeStorage store.Store, readStorages *store.ReadNodes) *Instance {
 	return &Instance{
-		store: storage,
+		store:        writeStorage,
+		readStorages: readStorages,
 	}
 }

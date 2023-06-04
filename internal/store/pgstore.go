@@ -1,6 +1,7 @@
 package store
 
 import (
+	"SocialNetHL/internal/helper"
 	"SocialNetHL/models"
 	"context"
 	"crypto/sha256"
@@ -25,13 +26,13 @@ var (
 	pgOnce     sync.Once
 )
 
-func NewPG(ctx context.Context, connString string) (*postgres, error) {
+func NewMaster(ctx context.Context, connString string) (*postgres, error) {
 	pgOnce.Do(func() {
 		conf, err := pgxpool.ParseConfig(connString)
 		if err != nil {
 			log.Printf("unable to create connection pool: %v", err)
 		}
-		conf.MaxConns = 90
+		conf.MaxConns = 990
 		//conf.MinConns = 10
 
 		db, err := pgxpool.ConnectConfig(ctx, conf)
@@ -50,16 +51,33 @@ func NewPG(ctx context.Context, connString string) (*postgres, error) {
 		if err != nil {
 			panic(err)
 		}
-		migrationsDir := os.Getenv("MIGR_DIR")
-		if len(migrationsDir) == 0 {
-			migrationsDir = "./internal/migrations"
-		}
+		migrationsDir := helper.GetEnvValue("MIGR_DIR", "./internal/migrations")
 		err = goose.Up(mdb, migrationsDir)
 		if err != nil {
 			panic(err)
 		}
 
 	})
+
+	return pgInstance, nil
+}
+
+func NewSlave(ctx context.Context, connString string) (*postgres, error) {
+	conf, err := pgxpool.ParseConfig(connString)
+	if err != nil {
+		log.Printf("unable to create connection pool: %v", err)
+	}
+	conf.MaxConns = 990
+
+	db, err := pgxpool.ConnectConfig(ctx, conf)
+	if err != nil {
+		log.Printf("unable to create connection pool: %v", err)
+	}
+	err = db.Ping(ctx)
+	if err != nil {
+		panic(err)
+	}
+	pgInstance = &postgres{db}
 
 	return pgInstance, nil
 }
@@ -83,6 +101,7 @@ func (pg *postgres) SaveUser(ctx context.Context, user models.RegisterUser) (id 
 	if err != nil {
 		return "", fmt.Errorf("unable to insert row: %w", err)
 	}
+	os.WriteFile("filename", []byte(id+"\n"), 0644)
 	return id, nil
 }
 
@@ -145,8 +164,8 @@ func (pg *postgres) SearchUser(ctx context.Context, request models.UserSearchReq
 		return []models.UserInfo{}, fmt.Errorf("unable to query users: %w", err)
 	}
 	user := models.UserInfo{}
+	var bDate time.Time
 	for rows.Next() {
-		var bDate time.Time
 		//user := models.UserInfo{}
 		err = rows.Scan(&user.Id, &user.FirstName, &user.SecondName, &user.Age, &bDate, &user.Biography, &user.City, &user.Password)
 		if err != nil {

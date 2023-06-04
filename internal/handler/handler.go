@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"SocialNetHL/internal/store"
 	"SocialNetHL/models"
 	"context"
 	"crypto/sha256"
@@ -22,15 +23,14 @@ func (i *Instance) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(fmt.Sprintf("{\n  \"user_id\": \"%s\" \n}", saveUser)))
 }
 
 func (i *Instance) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	user, _ := i.store.LoadUser(context.Background(), id)
+	readStorage := store.GetReadNode(i.readStorages)
+	user, _ := readStorage.LoadUser(context.Background(), id)
 	userDTO, _ := json.Marshal(user)
-	w.WriteHeader(http.StatusOK)
 	w.Write(userDTO)
 }
 
@@ -51,7 +51,6 @@ func (i *Instance) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		registerRes := models.RegisterResult{UserId: saveUser}
 		rr, _ := json.Marshal(registerRes)
-		w.WriteHeader(http.StatusOK)
 		w.Write(rr)
 	} else {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -62,13 +61,13 @@ func (i *Instance) HandleSearchUser(w http.ResponseWriter, r *http.Request) {
 	var userSearchRequest models.UserSearchRequest
 	firstName := r.URL.Query().Get("first_name")
 	lastName := r.URL.Query().Get("last_name")
+	readStorage := store.GetReadNode(i.readStorages)
 	if len(firstName) > 0 || len(lastName) > 0 {
 		userSearchRequest.LastName = lastName
 		userSearchRequest.FirstName = firstName
-		users, _ := i.store.SearchUser(context.Background(), userSearchRequest)
+		users, _ := readStorage.SearchUser(context.Background(), userSearchRequest)
 		userDTO, _ := json.Marshal(users)
 		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		w.Write(userDTO)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
