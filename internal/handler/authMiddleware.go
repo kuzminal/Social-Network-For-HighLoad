@@ -21,8 +21,8 @@ func (i *Instance) BasicAuth(next http.Handler) http.Handler {
 				log.Println(e)
 			}
 			if len(user) > 0 {
-				log.Printf("User with id: %s logged in", user)
-				next.ServeHTTP(w, r)
+				ctx := context.WithValue(r.Context(), "userId", user)
+				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			} else {
 				w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)

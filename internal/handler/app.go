@@ -1,6 +1,8 @@
 package handler
 
-import "SocialNetHL/internal/store"
+import (
+	"SocialNetHL/internal/store"
+)
 
 type Instance struct {
 	store        store.Store

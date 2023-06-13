@@ -16,6 +16,15 @@ func NewRouter(i *handler.Instance) http.Handler {
 		r.Post("/user/register", i.HandleRegister)
 		r.Get("/user/get/{id}", i.HandleGetUser)
 		r.Get("/user/search", i.HandleSearchUser)
+
+		r.Put("/friend/set/{user_id}", i.HandleFriendAdd)
+		r.Put("/friend/delete/{user_id}", i.HandleFriendDelete)
+
+		r.Post("/post/create", i.HandlePostCreate)
+		r.Put("/post/update", i.HandlePostUpdate)
+		r.Delete("/post/delete/{id}", i.HandlePostDelete)
+		r.Get("/post/get/{id}", i.HandleGetPost)
+		r.Get("/post/feed", i.HandleFeed)
 	})
 
 	r.Post("/login", i.HandleLogin)
