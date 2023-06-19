@@ -68,5 +68,9 @@ func initDb() {
 }
 
 func initQueue() {
-	queues, _ = queue.NewFeedQueue("amqp://user:password@localhost:5672/", "posts", "friends")
+	rhost := helper.GetEnvValue("RABBIT_HOST", "localhost")
+	ruser := helper.GetEnvValue("RABBIT_USER", "user")
+	rpassword := helper.GetEnvValue("RABBIT_PASSWORD", "password")
+	connStr := fmt.Sprintf("amqp://%s:%s@%s:5672/", ruser, rpassword, rhost)
+	queues, _ = queue.NewFeedQueue(connStr, "posts", "friends")
 }

@@ -1,20 +1,20 @@
-box.cfg{listen = 3301}
+box.cfg { listen = 3301 }
 
-function bootstrapdb()
-    s = box.schema.space.create('posts', {if_not_exists = true})
-    s:format({
-        {name = 'user_id', type = 'string'},
-        {name = 'posts', type = 'array'}
-    })
-    s:create_index('primary', {
-        type = 'hash',
-        parts = {'user_id'}
-    })
-    pg = require('pg')
-end
+s = box.schema.space.create('posts', { if_not_exists = true })
+s:format({
+    { name = 'user_id', type = 'string' },
+    { name = 'posts', type = 'array' }
+})
+s:create_index('primary', {
+    if_not_exists = true,
+    type = 'hash',
+    parts = { 'user_id' }
+})
+pg = require('pg')
 
-box.once('createdb', bootstrapdb)
 
+--box.once('createdb', bootstrapdb)
+require 'console'.start()
 function update_cache_from_db(user_id)
     local conn = pg.connect({
         host = 'db',
@@ -30,7 +30,7 @@ function update_cache_from_db(user_id)
             "ORDER BY p.created_at DESC LIMIT 1000; ")
     row = ''
     for i, card in ipairs(test) do
-        box.space.posts:replace{user_id,card}
+        box.space.posts:replace { user_id, card }
         row = card
     end
     conn:close()
@@ -51,7 +51,7 @@ function get_data(key, offset, limit)
         if limit + offset > #res then
             limit = #res
         end
-        for i=offset+1,offset+limit do
+        for i = offset + 1, offset + limit do
             table.insert(response, res[i])
         end
     end

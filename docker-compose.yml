@@ -17,8 +17,15 @@ services:
       - TARANTOOL_HOST=tarantool
       - TARANTOOL_USER=user
       - TARANTOOL_PASSWORD=password
+      - RABBIT_HOST=rabbitmq
+      - RABBIT_USER=user
+      - RABBIT_PASSWORD=password
     ports:
       - "8080:8080"
+    depends_on:
+      - rabbitmq
+      - db
+      - tarantool
   db:
     image: postgres:14.1-alpine
     restart: always
@@ -64,6 +71,9 @@ services:
       - "15672:15672"
       - "5672:5672"
   tarantool:
+    build:
+      dockerfile: tarantool/Dockerfile
+      context: .
     image: tarantool/tarantool:2.11.0
     restart: always
     environment:

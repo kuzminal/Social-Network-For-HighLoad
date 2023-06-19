@@ -66,12 +66,19 @@ func (i *Instance) HandlePostDelete(w http.ResponseWriter, r *http.Request) {
 
 func (i *Instance) HandlePostUpdate(w http.ResponseWriter, r *http.Request) {
 	var post models.Post
+	userId := r.Context().Value("userId").(string)
+	if len(userId) == 0 {
+		log.Println("Could not delete friend from empty user")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	err := json.NewDecoder(r.Body).Decode(&post)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("Bad request body given"))
 		return
 	}
+	post.AuthorUserId = userId
 	err = i.store.UpdatePost(context.Background(), post)
 	if err != nil {
 		log.Printf("Could not update post for user, err: %v", err)
