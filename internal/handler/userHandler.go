@@ -49,8 +49,8 @@ func (i *Instance) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		registerRes := models.RegisterResult{UserId: saveUser}
-		rr, _ := json.Marshal(registerRes)
+		loginRes := models.LoginResult{Token: saveUser}
+		rr, _ := json.Marshal(loginRes)
 		w.Write(rr)
 	} else {
 		w.WriteHeader(http.StatusUnauthorized)

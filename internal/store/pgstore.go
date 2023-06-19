@@ -17,16 +17,16 @@ import (
 	"time"
 )
 
-type postgres struct {
+type Postgres struct {
 	db *pgxpool.Pool
 }
 
 var (
-	pgInstance *postgres
+	pgInstance *Postgres
 	pgOnce     sync.Once
 )
 
-func NewMaster(ctx context.Context, connString string) (*postgres, error) {
+func NewMaster(ctx context.Context, connString string) (*Postgres, error) {
 	pgOnce.Do(func() {
 		conf, err := pgxpool.ParseConfig(connString)
 		if err != nil {
@@ -45,7 +45,7 @@ func NewMaster(ctx context.Context, connString string) (*postgres, error) {
 			panic(err)
 		}
 		config := db.Config()
-		pgInstance = &postgres{db}
+		pgInstance = &Postgres{db}
 		mdb, err := sql.Open("postgres", config.ConnString())
 		err = mdb.Ping()
 		if err != nil {
@@ -62,7 +62,7 @@ func NewMaster(ctx context.Context, connString string) (*postgres, error) {
 	return pgInstance, nil
 }
 
-func NewSlave(ctx context.Context, connString string) (*postgres, error) {
+func NewSlave(ctx context.Context, connString string) (*Postgres, error) {
 	conf, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 		log.Printf("unable to create connection pool: %v", err)
@@ -77,21 +77,21 @@ func NewSlave(ctx context.Context, connString string) (*postgres, error) {
 	if err != nil {
 		panic(err)
 	}
-	pgInstance = &postgres{db}
+	pgInstance = &Postgres{db}
 
 	return pgInstance, nil
 }
 
-func (pg *postgres) Ping(ctx context.Context) error {
+func (pg *Postgres) Ping(ctx context.Context) error {
 	return pg.db.Ping(ctx)
 }
 
-func (pg *postgres) Close() error {
+func (pg *Postgres) Close() error {
 	pg.db.Close()
 	return nil
 }
 
-func (pg *postgres) SaveUser(ctx context.Context, user models.RegisterUser) (id string, err error) {
+func (pg *Postgres) SaveUser(ctx context.Context, user models.RegisterUser) (id string, err error) {
 	query := `INSERT INTO social.users (id, first_name, second_name, age, birthdate, biography, city, password) 
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
 	id = uuid.Must(uuid.NewV4()).String()
@@ -105,7 +105,7 @@ func (pg *postgres) SaveUser(ctx context.Context, user models.RegisterUser) (id 
 	return id, nil
 }
 
-func (pg *postgres) LoadUser(ctx context.Context, id string) (usersInfo models.UserInfo, err error) {
+func (pg *Postgres) LoadUser(ctx context.Context, id string) (usersInfo models.UserInfo, err error) {
 	query := `SELECT id, first_name, second_name, age, birthdate, biography, city, password FROM social.users WHERE id = $1`
 
 	row := pg.db.QueryRow(ctx, query, id)
@@ -122,7 +122,7 @@ func (pg *postgres) LoadUser(ctx context.Context, id string) (usersInfo models.U
 	return user, nil
 }
 
-func (pg *postgres) LoadSession(ctx context.Context, token string) (string, error) {
+func (pg *Postgres) LoadSession(ctx context.Context, token string) (string, error) {
 	query := `SELECT user_id FROM social.session WHERE token = $1`
 	//cont, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
 	//defer cancel()
@@ -135,7 +135,7 @@ func (pg *postgres) LoadSession(ctx context.Context, token string) (string, erro
 	return userId, nil
 }
 
-func (pg *postgres) CreateSession(ctx context.Context, m *models.AuthInfo) (string, error) {
+func (pg *Postgres) CreateSession(ctx context.Context, m *models.AuthInfo) (string, error) {
 	query := `INSERT INTO social.session (user_id, token, created_at) 
 VALUES ($1, $2, $3)
 ON CONFLICT (user_id) DO UPDATE
@@ -154,7 +154,7 @@ func calculateAge(bDate time.Time) int {
 	return int(dur.Seconds() / 31207680)
 }
 
-func (pg *postgres) SearchUser(ctx context.Context, request models.UserSearchRequest) (users []models.UserInfo, err error) {
+func (pg *Postgres) SearchUser(ctx context.Context, request models.UserSearchRequest) (users []models.UserInfo, err error) {
 	query := `SELECT id, first_name, second_name, age, birthdate, biography, city, password FROM social.users WHERE first_name LIKE $1 AND second_name LIKE $2 ORDER BY id`
 	//cont, cancel := context.WithTimeout(ctx, 2*time.Second)
 	//defer cancel()
@@ -177,7 +177,7 @@ func (pg *postgres) SearchUser(ctx context.Context, request models.UserSearchReq
 	return users, nil
 }
 
-func (pg *postgres) CheckIfExistsUser(ctx context.Context, userId string) (bool, error) {
+func (pg *Postgres) CheckIfExistsUser(ctx context.Context, userId string) (bool, error) {
 	query := `SELECT id FROM social.users WHERE id=$1`
 	row := pg.db.QueryRow(ctx, query, userId)
 
@@ -192,20 +192,35 @@ func (pg *postgres) CheckIfExistsUser(ctx context.Context, userId string) (bool,
 	return true, nil
 }
 
-func (pg *postgres) AddFriend(ctx context.Context, userId string, friendId string) error {
+func (pg *Postgres) AddFriend(ctx context.Context, userId string, friendId string) error {
 	query := `INSERT INTO social.friends (user_id, friend_id, created_at) 
 VALUES ($1, $2, $3);`
 	_, err := pg.db.Exec(ctx, query, userId, friendId, time.Now())
 	return err
 }
 
-func (pg *postgres) DeleteFriend(ctx context.Context, userId string, friendId string) error {
+func (pg *Postgres) FindFriends(ctx context.Context, userId string) ([]string, error) {
+	query := `SELECT user_id FROM social.friends WHERE friend_id=$1;`
+	rows, err := pg.db.Query(ctx, query, userId)
+	var friends []string
+	var friendId string
+	for rows.Next() {
+		err = rows.Scan(&friendId)
+		if err != nil {
+			log.Printf("unable to scan row: %v", err)
+		}
+		friends = append(friends, friendId)
+	}
+	return friends, err
+}
+
+func (pg *Postgres) DeleteFriend(ctx context.Context, userId string, friendId string) error {
 	query := `DELETE FROM social.friends WHERE user_id=$1 and friend_id=$2;`
 	_, err := pg.db.Exec(ctx, query, userId, friendId)
 	return err
 }
 
-func (pg *postgres) AddPost(ctx context.Context, post models.Post) (string, error) {
+func (pg *Postgres) AddPost(ctx context.Context, post models.Post) (string, error) {
 	query := `INSERT INTO social.posts (id, "text", author_user_id, created_at) 
 VALUES ($1, $2, $3, $4) RETURNING id;`
 	var postId string
@@ -217,13 +232,13 @@ VALUES ($1, $2, $3, $4) RETURNING id;`
 	return postId, nil
 }
 
-func (pg *postgres) DeletePost(ctx context.Context, userId string, postId string) error {
+func (pg *Postgres) DeletePost(ctx context.Context, userId string, postId string) error {
 	query := `DELETE FROM social.posts WHERE author_user_id=$1 and id=$2;`
 	_, err := pg.db.Exec(ctx, query, userId, postId)
 	return err
 }
 
-func (pg *postgres) UpdatePost(ctx context.Context, post models.Post) error {
+func (pg *Postgres) UpdatePost(ctx context.Context, post models.Post) error {
 	query := `UPDATE social.posts SET "text"=$1, created_at=$2 WHERE id=$3;`
 	_, err := pg.db.Exec(ctx, query, post.Text, time.Now(), post.Id)
 	if err != nil {
@@ -232,7 +247,7 @@ func (pg *postgres) UpdatePost(ctx context.Context, post models.Post) error {
 	return nil
 }
 
-func (pg *postgres) GetPost(ctx context.Context, postId string) (models.Post, error) {
+func (pg *Postgres) GetPost(ctx context.Context, postId string) (models.Post, error) {
 	query := `SELECT id, "text", author_user_id, created_at FROM social.posts WHERE id = $1;`
 
 	row := pg.db.QueryRow(ctx, query, postId)
@@ -247,7 +262,7 @@ func (pg *postgres) GetPost(ctx context.Context, postId string) (models.Post, er
 	return post, nil
 }
 
-func (pg *postgres) FeedPost(ctx context.Context, offset int, limit int, userId string) (posts []models.Post, err error) {
+func (pg *Postgres) FeedPost(ctx context.Context, offset int, limit int, userId string) (posts []models.Post, err error) {
 	query := `SELECT p.id, p."text", p.author_user_id, p.created_at
 FROM social.friends f
 RIGHT JOIN social.posts p ON p.author_user_id=f.friend_id

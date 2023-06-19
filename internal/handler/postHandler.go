@@ -35,6 +35,10 @@ func (i *Instance) HandlePostCreate(w http.ResponseWriter, r *http.Request) {
 		log.Println("Could not add new post")
 		return
 	}
+	err = i.Queue.SendPostToFeed(context.Background(), post)
+	if err != nil {
+		log.Printf("cannot send post to feed, err: %v\n", err)
+	}
 	w.Write([]byte(postId))
 }
 
@@ -86,7 +90,7 @@ func (i *Instance) HandleGetPost(w http.ResponseWriter, r *http.Request) {
 func (i *Instance) HandleFeed(w http.ResponseWriter, r *http.Request) {
 	limit := r.URL.Query().Get("limit")
 	offset := r.URL.Query().Get("offset")
-	readStorage := store.GetReadNode(i.readStorages)
+	//readStorage := i.cache.GetData()store.GetReadNode(i.readStorages)
 	if len(limit) == 0 {
 		limit = "10"
 	}
@@ -101,7 +105,7 @@ func (i *Instance) HandleFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	limitNum, _ := strconv.Atoi(limit)
 	offsetNum, _ := strconv.Atoi(offset)
-	posts, _ := readStorage.FeedPost(context.Background(), offsetNum, limitNum, userId)
+	posts := i.cache.GetData(userId, offsetNum, limitNum)
 	postsDTO, _ := json.Marshal(posts)
 	w.Header().Add("Content-Type", "application/json")
 	w.Write(postsDTO)

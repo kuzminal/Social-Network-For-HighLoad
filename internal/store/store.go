@@ -17,6 +17,7 @@ type Store interface {
 	SearchUser(ctx context.Context, request models.UserSearchRequest) (users []models.UserInfo, err error)
 	CheckIfExistsUser(ctx context.Context, userId string) (bool, error)
 	AddFriend(ctx context.Context, userId string, friendId string) error
+	FindFriends(ctx context.Context, userId string) ([]string, error)
 	DeleteFriend(ctx context.Context, userId string, friendId string) error
 	AddPost(ctx context.Context, post models.Post) (string, error)
 	DeletePost(ctx context.Context, userId string, postId string) error
