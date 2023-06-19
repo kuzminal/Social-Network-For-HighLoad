@@ -57,6 +57,10 @@ func (i *Instance) HandlePostDelete(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	err = i.Queue.SendPostToFeed(context.Background(), models.Post{Id: postId, AuthorUserId: userId})
+	if err != nil {
+		log.Printf("cannot send post to feed, err: %v\n", err)
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -74,7 +78,10 @@ func (i *Instance) HandlePostUpdate(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
+	err = i.Queue.SendPostToFeed(context.Background(), post)
+	if err != nil {
+		log.Printf("cannot send post to feed, err: %v\n", err)
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
