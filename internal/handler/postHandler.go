@@ -120,7 +120,10 @@ func (i *Instance) HandleFeed(w http.ResponseWriter, r *http.Request) {
 	limitNum, _ := strconv.Atoi(limit)
 	offsetNum, _ := strconv.Atoi(offset)
 	posts := i.cache.GetData(userId, offsetNum, limitNum)
-	postsDTO, _ := json.Marshal(posts)
+	postsDTO, err := json.Marshal(posts)
+	if err != nil {
+		log.Println(err)
+	}
 	w.Header().Add("Content-Type", "application/json")
 	w.Write(postsDTO)
 }

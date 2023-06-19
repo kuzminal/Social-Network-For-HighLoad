@@ -12,8 +12,6 @@ s:create_index('primary', {
 })
 pg = require('pg')
 
-
---box.once('createdb', bootstrapdb)
 require 'console'.start()
 function update_cache_from_db(user_id)
     local conn = pg.connect({
@@ -28,8 +26,8 @@ function update_cache_from_db(user_id)
             "RIGHT JOIN social.posts p ON p.author_user_id=f.friend_id " ..
             "WHERE f.user_id='" .. user_id .. '\' ' ..
             "ORDER BY p.created_at DESC LIMIT 1000; ")
-    row = ''
-    for i, card in ipairs(test) do
+    local row = ''
+    for _, card in ipairs(test) do
         box.space.posts:replace { user_id, card }
         row = card
     end
@@ -41,7 +39,6 @@ function get_data(key, offset, limit)
     local tuple = box.space.posts:get(key)
     local res = {}
     local response = {}
-    index = ''
     if tuple == nil then
         tuple = update_cache_from_db(key)
         --tuple = box.space.posts:insert{key, data}

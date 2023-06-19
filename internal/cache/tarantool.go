@@ -53,7 +53,7 @@ func (t *Tarantool) GetData(key string, offset int, limit int) models.Feed {
 	var feed models.Feed
 	err := t.conn.CallTyped("get_data", []interface{}{key, offset, limit}, &feed)
 	if err != nil {
-		return models.Feed{}
+		return models.Feed{Posts: []models.Post{}}
 	}
 	return feed
 }
