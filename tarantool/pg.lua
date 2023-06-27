@@ -28,8 +28,9 @@ function update_cache_from_db(user_id)
             "ORDER BY p.created_at DESC LIMIT 1000; ")
     local row = ''
     for _, card in ipairs(test) do
-        box.space.posts:replace { user_id, card }
-        row = card
+        --box.space.posts:replace { user_id, card }
+        --row = card
+        row = box.space.posts:replace { user_id, card }
     end
     conn:close()
     return row

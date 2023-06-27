@@ -24,4 +24,8 @@ type Store interface {
 	UpdatePost(ctx context.Context, post models.Post) error
 	GetPost(ctx context.Context, postId string) (models.Post, error)
 	FeedPost(ctx context.Context, offset int, limit int, userId string) ([]models.Post, error)
+	GetMessages(ctx context.Context, userFrom string, userTo string) ([]models.Message, error)
+	SaveMessage(ctx context.Context, message models.Message) error
+	GetChatId(ctx context.Context, userFrom string, userTo string) (string, error)
+	CreateChat(ctx context.Context, fromUser string, toUser string) (string, error)
 }
