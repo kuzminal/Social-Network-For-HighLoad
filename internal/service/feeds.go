@@ -56,18 +56,7 @@ func (f *FeedService) FindFriendsForPost() {
 			friends, _ := f.store.FindFriends(context.Background(), d.AuthorUserId)
 			for _, fr := range friends {
 				_ = f.queue.SendFriendToUpdateFeed(context.Background(), models.UpdateFeedRequest{UserId: fr, Post: d})
-				clients.Mutex.Lock()
-				if conn, ok := clients.Clients[fr]; ok {
-					post, err := json.Marshal(d)
-					if err != nil {
-						log.Println("Could not marshal post")
-					}
-					err = conn.WriteMessage(websocket.TextMessage, post)
-					if err != nil {
-						log.Println("Could not sent message to ws")
-					}
-				}
-				clients.Mutex.Unlock()
+				go sendToWs(fr, d)
 			}
 		}
 	}
@@ -106,4 +95,18 @@ func (f *FeedService) DeleteActiveClient(ch chan models.ActiveWsUsers) {
 			clients.Mutex.Unlock()
 		}
 	}
+}
+func sendToWs(userId string, post models.Post) {
+	clients.Mutex.Lock()
+	if conn, ok := clients.Clients[userId]; ok {
+		p, err := json.Marshal(post)
+		if err != nil {
+			log.Println("Could not marshal post")
+		}
+		err = conn.WriteMessage(websocket.TextMessage, p)
+		if err != nil {
+			log.Println("Could not sent message to ws")
+		}
+	}
+	clients.Mutex.Unlock()
 }
