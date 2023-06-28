@@ -11,6 +11,6 @@ type FeedQueue interface {
 
 	SendPostToFeed(ctx context.Context, post models.Post) error
 	GetPostForFeed(ch chan models.Post)
-	GetFriendsForUpdateFeed(ch chan models.UpdateFeedCacheRequest)
-	SendFriendToUpdateFeed(ctx context.Context, req models.UpdateFeedCacheRequest) error
+	GetFriendsForUpdateFeed(ch chan models.UpdateFeedRequest)
+	SendFriendToUpdateFeed(ctx context.Context, req models.UpdateFeedRequest) error
 }

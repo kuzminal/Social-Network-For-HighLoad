@@ -20,7 +20,7 @@ type Cache struct {
 	Posts  []Post
 }
 
-type UpdateFeedCacheRequest struct {
+type UpdateFeedRequest struct {
 	UserId string
 	Post   Post
 }

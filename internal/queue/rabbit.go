@@ -99,7 +99,7 @@ func (r *Rabbit) GetPostForFeed(ch chan models.Post) {
 	}
 }
 
-func (r *Rabbit) SendFriendToUpdateFeed(ctx context.Context, req models.UpdateFeedCacheRequest) error {
+func (r *Rabbit) SendFriendToUpdateFeed(ctx context.Context, req models.UpdateFeedRequest) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	body, err := json.Marshal(req)
@@ -118,7 +118,7 @@ func (r *Rabbit) SendFriendToUpdateFeed(ctx context.Context, req models.UpdateFe
 	return err
 }
 
-func (r *Rabbit) GetFriendsForUpdateFeed(ch chan models.UpdateFeedCacheRequest) {
+func (r *Rabbit) GetFriendsForUpdateFeed(ch chan models.UpdateFeedRequest) {
 	msgs, err := r.ch.Consume(
 		r.friendsQ.Name, // queue
 		"",              // consumer
@@ -134,7 +134,7 @@ func (r *Rabbit) GetFriendsForUpdateFeed(ch chan models.UpdateFeedCacheRequest) 
 		select {
 		case d := <-msgs:
 			log.Printf("Received a message: %s", d.Body)
-			var friendId models.UpdateFeedCacheRequest
+			var friendId models.UpdateFeedRequest
 			err = json.Unmarshal(d.Body, &friendId)
 			if err != nil {
 				log.Printf("Cannot proceess message from friends queue, err: %v\n", err)

@@ -28,20 +28,25 @@ func main() {
 	initQueue()
 	tarant, _ := cache.NewTarantool()
 
-	app := handler.NewInstance(master, &readNodes, queues, tarant)
+	connectToWsChan := make(chan models.ActiveWsUsers, 10)
+	disconnectToWsChan := make(chan models.ActiveWsUsers, 10)
+
+	app := handler.NewInstance(master, &readNodes, queues, tarant, connectToWsChan, disconnectToWsChan)
 	r := router.NewRouter(app)
 
 	go store.HealthCheck(&readNodes)
 
 	postChan := make(chan models.Post, 10)
-	cacheCh := make(chan models.UpdateFeedCacheRequest, 10)
+	cacheCh := make(chan models.UpdateFeedRequest, 10)
+
 	go app.Queue.GetPostForFeed(postChan)
 	go app.Queue.GetFriendsForUpdateFeed(cacheCh)
 
-	feedService := service.NewFeedService(tarant, queues, postChan, cacheCh, master)
+	feedService := service.NewFeedService(tarant, queues, postChan, cacheCh, master, connectToWsChan, disconnectToWsChan)
 	go feedService.FindFriendsForPost()
 	go feedService.UpdateCacheForFriends()
-
+	go feedService.AddActiveClient(connectToWsChan)
+	go feedService.DeleteActiveClient(disconnectToWsChan)
 	http.ListenAndServe(":8080", r)
 }
 

@@ -6,24 +6,47 @@ import (
 	"SocialNetHL/internal/store"
 	"SocialNetHL/models"
 	"context"
+	"encoding/json"
+	"github.com/gorilla/websocket"
 	"log"
+	"sync"
 )
 
+type ActiveClients struct {
+	sync.Mutex
+	Clients map[string]*websocket.Conn
+}
+
+var clients = ActiveClients{Clients: map[string]*websocket.Conn{}}
+
 type FeedService struct {
-	store           store.Store
-	cacheDb         cache.Cache
-	queue           queue.FeedQueue
-	postChan        chan models.Post
-	cacheUpdateChan chan models.UpdateFeedCacheRequest
+	store            store.Store
+	cacheDb          cache.Cache
+	queue            queue.FeedQueue
+	postChan         chan models.Post
+	cacheUpdateChan  chan models.UpdateFeedRequest
+	connectToWs      chan models.ActiveWsUsers
+	disconnectFromWs chan models.ActiveWsUsers
 }
 
 func NewFeedService(
 	cacheDb cache.Cache,
 	queue queue.FeedQueue,
 	postChan chan models.Post,
-	cacheUpdateChan chan models.UpdateFeedCacheRequest,
-	store store.Store) *FeedService {
-	return &FeedService{cacheDb: cacheDb, queue: queue, postChan: postChan, cacheUpdateChan: cacheUpdateChan, store: store}
+	cacheUpdateChan chan models.UpdateFeedRequest,
+	store store.Store,
+	connectToWs chan models.ActiveWsUsers,
+	disconnectFromWs chan models.ActiveWsUsers,
+) *FeedService {
+	return &FeedService{
+		cacheDb:          cacheDb,
+		queue:            queue,
+		postChan:         postChan,
+		cacheUpdateChan:  cacheUpdateChan,
+		store:            store,
+		connectToWs:      connectToWs,
+		disconnectFromWs: disconnectFromWs,
+	}
 }
 
 func (f *FeedService) FindFriendsForPost() {
@@ -32,7 +55,19 @@ func (f *FeedService) FindFriendsForPost() {
 		case d := <-f.postChan:
 			friends, _ := f.store.FindFriends(context.Background(), d.AuthorUserId)
 			for _, fr := range friends {
-				_ = f.queue.SendFriendToUpdateFeed(context.Background(), models.UpdateFeedCacheRequest{UserId: fr, Post: d})
+				_ = f.queue.SendFriendToUpdateFeed(context.Background(), models.UpdateFeedRequest{UserId: fr, Post: d})
+				clients.Mutex.Lock()
+				if conn, ok := clients.Clients[fr]; ok {
+					post, err := json.Marshal(d)
+					if err != nil {
+						log.Println("Could not marshal post")
+					}
+					err = conn.WriteMessage(websocket.TextMessage, post)
+					if err != nil {
+						log.Println("Could not sent message to ws")
+					}
+				}
+				clients.Mutex.Unlock()
 			}
 		}
 	}
@@ -47,6 +82,28 @@ func (f *FeedService) UpdateCacheForFriends() {
 				return
 			}
 			log.Printf("Update data : %v", db)
+		}
+	}
+}
+
+func (f *FeedService) AddActiveClient(ch chan models.ActiveWsUsers) {
+	for {
+		select {
+		case d := <-ch:
+			clients.Mutex.Lock()
+			clients.Clients[d.User] = d.Conn
+			clients.Mutex.Unlock()
+		}
+	}
+}
+
+func (f *FeedService) DeleteActiveClient(ch chan models.ActiveWsUsers) {
+	for {
+		select {
+		case d := <-ch:
+			clients.Mutex.Lock()
+			delete(clients.Clients, d.User)
+			clients.Mutex.Unlock()
 		}
 	}
 }

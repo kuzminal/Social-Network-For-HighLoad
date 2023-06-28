@@ -7,10 +7,16 @@ import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
+	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"strconv"
 )
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
 
 func (i *Instance) HandlePostCreate(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value("userId").(string)
@@ -126,4 +132,37 @@ func (i *Instance) HandleFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Add("Content-Type", "application/json")
 	w.Write(postsDTO)
+}
+
+func (i *Instance) HandlePostedWs(w http.ResponseWriter, r *http.Request) {
+	userId := r.Context().Value("userId").(string)
+	if len(userId) == 0 {
+		log.Println("Could not delete friend from empty user")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	ws, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	i.connectToWs <- models.ActiveWsUsers{User: userId, Conn: ws}
+	log.Println("Websocket Connected!")
+	ws.SetCloseHandler(func(code int, text string) error {
+		log.Println("Disconnected")
+		i.disconnectFromWs <- models.ActiveWsUsers{User: userId}
+		return nil
+	})
+	listen(ws)
+}
+
+func listen(conn *websocket.Conn) {
+	for {
+		_, messageContent, err := conn.ReadMessage()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		log.Println(string(messageContent))
+	}
 }

@@ -1,5 +1,7 @@
 package models
 
+import "github.com/gorilla/websocket"
+
 type RegisterUser struct {
 	FirstName  string `json:"first_name"`
 	SecondName string `json:"second_name"`
@@ -36,4 +38,9 @@ type LoginResult struct {
 type UserSearchRequest struct {
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
+}
+
+type ActiveWsUsers struct {
+	User string
+	Conn *websocket.Conn
 }
