@@ -8,7 +8,11 @@ import (
 )
 
 type Instance struct {
-	store            store.Store
+	userStore        store.UserStore
+	sessionStore     store.SessionStore
+	postStore        store.PostStore
+	friendStore      store.FriendStore
+	dialogueStore    store.DialogueStore
 	readStorages     *store.ReadNodes
 	Queue            queue.FeedQueue
 	cache            cache.Cache
@@ -17,7 +21,11 @@ type Instance struct {
 }
 
 func NewInstance(
-	writeStorage store.Store,
+	userStore store.UserStore,
+	sessionStore store.SessionStore,
+	postStore store.PostStore,
+	friendStore store.FriendStore,
+	dialogueStore store.DialogueStore,
 	readStorages *store.ReadNodes,
 	rabbit queue.FeedQueue,
 	cache cache.Cache,
@@ -25,7 +33,11 @@ func NewInstance(
 	disconnectFromWs chan models.ActiveWsUsers,
 ) *Instance {
 	return &Instance{
-		store:            writeStorage,
+		userStore:        userStore,
+		sessionStore:     sessionStore,
+		postStore:        postStore,
+		friendStore:      friendStore,
+		dialogueStore:    dialogueStore,
 		readStorages:     readStorages,
 		Queue:            rabbit,
 		cache:            cache,

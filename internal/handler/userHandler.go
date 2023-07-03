@@ -19,7 +19,7 @@ func (i *Instance) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("Bad request body given"))
 		return
 	}
-	saveUser, err := i.store.SaveUser(context.Background(), user)
+	saveUser, err := i.userStore.SaveUser(context.Background(), user)
 	if err != nil {
 		return
 	}
@@ -31,6 +31,7 @@ func (i *Instance) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 	readStorage := store.GetReadNode(i.readStorages)
 	user, _ := readStorage.LoadUser(context.Background(), id)
 	userDTO, _ := json.Marshal(user)
+	w.Header().Add("Content-Type", "application/json")
 	w.Write(userDTO)
 }
 
@@ -42,10 +43,10 @@ func (i *Instance) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("Bad request body given"))
 		return
 	}
-	userInfo, _ := i.store.LoadUser(context.Background(), authInfo.Id)
+	userInfo, _ := i.userStore.LoadUser(context.Background(), authInfo.Id)
 	passHash := fmt.Sprintf("%x", sha256.Sum256([]byte(authInfo.Password)))
 	if len(userInfo.Id) > 0 && passHash == userInfo.Password {
-		saveUser, err := i.store.CreateSession(context.Background(), &authInfo)
+		saveUser, err := i.sessionStore.CreateSession(context.Background(), &authInfo)
 		if err != nil {
 			return
 		}
@@ -66,9 +67,13 @@ func (i *Instance) HandleSearchUser(w http.ResponseWriter, r *http.Request) {
 		userSearchRequest.LastName = lastName
 		userSearchRequest.FirstName = firstName
 		users, _ := readStorage.SearchUser(context.Background(), userSearchRequest)
-		userDTO, _ := json.Marshal(users)
-		w.Header().Add("Content-Type", "application/json")
-		w.Write(userDTO)
+		if users == nil {
+			w.WriteHeader(http.StatusNoContent)
+		} else {
+			userDTO, _ := json.Marshal(users)
+			w.Header().Add("Content-Type", "application/json")
+			w.Write(userDTO)
+		}
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 	}

@@ -14,11 +14,11 @@ type ReadNodes struct {
 }
 
 type Backend struct {
-	Store  Store
+	Store  UserStore
 	IsDead bool
 }
 
-func GetReadNode(readStorage *ReadNodes) Store {
+func GetReadNode(readStorage *ReadNodes) UserStore {
 	readStorage.mu.Lock()
 	storage := readStorage.Nodes[readStorage.Current]
 	if storage.IsDead {

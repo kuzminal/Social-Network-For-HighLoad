@@ -16,7 +16,7 @@ func (i *Instance) BasicAuth(next http.Handler) http.Handler {
 			w.Write([]byte("Malformed Token"))
 		} else {
 			token := authHeader[1]
-			user, e := i.store.LoadSession(context.Background(), token)
+			user, e := i.sessionStore.LoadSession(context.Background(), token)
 			if e != nil {
 				log.Println(e)
 			}
