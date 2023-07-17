@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"SocialNetHL/internal/store"
 	"SocialNetHL/models"
 	"context"
 	"encoding/json"
@@ -35,7 +34,7 @@ func (i *Instance) HandlePostCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	post.AuthorUserId = userId
 	post.Id = uuid.Must(uuid.NewV4()).String()
-	postId, err := i.store.AddPost(context.Background(), post)
+	postId, err := i.postStore.AddPost(context.Background(), post)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Println("Could not add new post")
@@ -57,7 +56,7 @@ func (i *Instance) HandlePostDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := i.store.DeletePost(context.Background(), userId, postId)
+	err := i.postStore.DeletePost(context.Background(), userId, postId)
 	if err != nil {
 		log.Println("Could not delete friend from user")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -85,7 +84,7 @@ func (i *Instance) HandlePostUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	post.AuthorUserId = userId
-	err = i.store.UpdatePost(context.Background(), post)
+	err = i.postStore.UpdatePost(context.Background(), post)
 	if err != nil {
 		log.Printf("Could not update post for user, err: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -100,8 +99,8 @@ func (i *Instance) HandlePostUpdate(w http.ResponseWriter, r *http.Request) {
 
 func (i *Instance) HandleGetPost(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	readStorage := store.GetReadNode(i.readStorages)
-	post, _ := readStorage.GetPost(context.Background(), id)
+	//readStorage := store.GetReadNode(i.readStorages)
+	post, _ := i.postStore.GetPost(context.Background(), id)
 	postDTO, _ := json.Marshal(post)
 	w.Header().Add("Content-Type", "application/json")
 	w.Write(postDTO)

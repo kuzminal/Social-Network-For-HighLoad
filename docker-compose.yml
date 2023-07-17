@@ -13,19 +13,19 @@ services:
       - MIGR_DIR=/usr/bin/migrations
       # можно указать мастера в качестве слэйва если не настроена репликация и не поднимать еще два контейнера с БД
       #- SLAVE_HOST_PORT=db:5432
-      - SLAVE_HOST_PORT=socialnethl-worker-1:5432,socialnethl-worker-2:5432
-      - TARANTOOL_HOST=tarantool
+      - SLAVE_HOST_PORT=tarantool_master:3301,tarantool_slave:3301
+      - TARANTOOL_HOST=tarantool_master
       - TARANTOOL_USER=user
       - TARANTOOL_PASSWORD=password
       - RABBIT_HOST=rabbitmq
       - RABBIT_USER=user
       - RABBIT_PASSWORD=password
     ports:
-      - "8080:8080"
+      - "8080-8085:8080"
     depends_on:
       - rabbitmq
       - master
-      - tarantool
+      - tarantool_master
   rabbitmq:
     image: rabbitmq:3.10.7-management-alpine
     hostname: rabbitmq
@@ -39,7 +39,7 @@ services:
     ports:
       - "15672:15672"
       - "5672:5672"
-  tarantool:
+  tarantool_master:
     build:
       dockerfile: tarantool/Dockerfile
       context: .
@@ -50,6 +50,18 @@ services:
       - TARANTOOL_USER_PASSWORD=password
     ports:
       - "3301:3301"
+  tarantool_slave:
+    build:
+      dockerfile: tarantool/Dockerfile
+      context: .
+    image: tarantool/tarantool:2.11.0
+    restart: always
+    environment:
+      - TARANTOOL_USER_NAME=user
+      - TARANTOOL_USER_PASSWORD=password
+      - TARANTOOL_REPLICATION=user:password@tarantool_master:3301
+    ports:
+      - "3302:3301"
   master:
     container_name: "${COMPOSE_PROJECT_NAME:-citus}_master"
     image: "citusdata/citus:11.3.0"

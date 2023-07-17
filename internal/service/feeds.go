@@ -20,7 +20,7 @@ type ActiveClients struct {
 var clients = ActiveClients{Clients: map[string]*websocket.Conn{}}
 
 type FeedService struct {
-	store            store.Store
+	store            store.FriendStore
 	cacheDb          cache.Cache
 	queue            queue.FeedQueue
 	postChan         chan models.Post
@@ -34,7 +34,7 @@ func NewFeedService(
 	queue queue.FeedQueue,
 	postChan chan models.Post,
 	cacheUpdateChan chan models.UpdateFeedRequest,
-	store store.Store,
+	store store.FriendStore,
 	connectToWs chan models.ActiveWsUsers,
 	disconnectFromWs chan models.ActiveWsUsers,
 ) *FeedService {

@@ -19,7 +19,7 @@ func (i *Instance) SendMessage(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	chatId, _ := i.store.GetChatId(context.Background(), id, userId)
+	chatId, _ := i.dialogueStore.GetChatId(context.Background(), id, userId)
 
 	var msg models.Message
 	err := json.NewDecoder(r.Body).Decode(&msg)
@@ -39,7 +39,7 @@ func (i *Instance) SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	msg.ChatId = chatId
-	err = i.store.SaveMessage(context.Background(), msg)
+	err = i.dialogueStore.SaveMessage(context.Background(), msg)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("Bad request body given"))
@@ -57,7 +57,7 @@ func (i *Instance) GetMessages(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	msg, _ := i.store.GetMessages(context.Background(), id, userId)
+	msg, _ := i.dialogueStore.GetMessages(context.Background(), id, userId)
 	msgDTO, _ := json.Marshal(msg)
 	w.Header().Add("Content-Type", "application/json")
 	w.Write(msgDTO)

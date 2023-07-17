@@ -3,23 +3,23 @@ package models
 import "github.com/gorilla/websocket"
 
 type RegisterUser struct {
-	FirstName  string `json:"first_name"`
-	SecondName string `json:"second_name"`
-	Birthdate  string `json:"birthdate"`
-	Biography  string `json:"biography"`
-	City       string `json:"city"`
-	Password   string `json:"password"`
+	FirstName  string `json:"first_name" msgpack:"FirstName"`
+	SecondName string `json:"second_name" msgpack:"SecondName"`
+	Birthdate  string `json:"birthdate" msgpack:"Birthdate"`
+	Biography  string `json:"biography" msgpack:"Biography"`
+	City       string `json:"city" msgpack:"City"`
+	Password   string `json:"password" msgpack:"Password"`
 }
 
 type UserInfo struct {
-	Id         string `json:"id"`
-	FirstName  string `json:"first_name"`
-	SecondName string `json:"second_name"`
-	Age        int    `json:"age"`
-	Birthdate  string `json:"birthdate"`
-	Biography  string `json:"biography"`
-	City       string `json:"city"`
-	Password   string `json:"-"`
+	Id         string `json:"id" msgpack:"Id"`
+	FirstName  string `json:"first_name" msgpack:"FirstName"`
+	SecondName string `json:"second_name" msgpack:"SecondName"`
+	Age        int    `json:"age" msgpack:"Age"`
+	Birthdate  string `json:"birthdate" msgpack:"Birthdate"`
+	Biography  string `json:"biography" msgpack:"Biography"`
+	City       string `json:"city" msgpack:"City"`
+	Password   string `json:"-" msgpack:"Password"`
 }
 
 type AuthInfo struct {

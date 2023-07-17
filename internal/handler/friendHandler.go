@@ -16,7 +16,7 @@ func (i *Instance) HandleFriendAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	friendId := chi.URLParam(r, "user_id")
 
-	err := i.store.AddFriend(context.Background(), userId, friendId)
+	err := i.friendStore.AddFriend(context.Background(), userId, friendId)
 	if err != nil {
 		log.Println("Could not add friend to user")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -34,7 +34,7 @@ func (i *Instance) HandleFriendDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	friendId := chi.URLParam(r, "user_id")
 
-	err := i.store.DeleteFriend(context.Background(), userId, friendId)
+	err := i.friendStore.DeleteFriend(context.Background(), userId, friendId)
 	if err != nil {
 		log.Println("Could not delete friend from user")
 		w.WriteHeader(http.StatusInternalServerError)
