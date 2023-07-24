@@ -50,7 +50,7 @@ func (i *Instance) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		loginRes := models.LoginResult{Token: saveUser}
+		loginRes := models.LoginResult{Token: saveUser.Token}
 		rr, _ := json.Marshal(loginRes)
 		w.Write(rr)
 	} else {

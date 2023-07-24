@@ -8,6 +8,6 @@ import (
 type SessionStore interface {
 	Store
 
-	LoadSession(ctx context.Context, id string) (string, error)
-	CreateSession(ctx context.Context, m *models.AuthInfo) (string, error)
+	LoadSession(ctx context.Context, id string) (models.UserSession, error)
+	CreateSession(ctx context.Context, m *models.AuthInfo) (models.UserSession, error)
 }

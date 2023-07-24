@@ -5,43 +5,32 @@ import (
 	"context"
 	"github.com/gofrs/uuid"
 	"github.com/pkg/errors"
-	"time"
 )
 
-type respLoad struct {
-	UserId []string
-}
-
-type respCreate struct {
-	Token []string
-}
-
-func (t *TarantoolStore) LoadSession(ctx context.Context, token string) (string, error) {
-	var userId respLoad
-	err := t.conn.CallTyped("get_session_by_user_id", []interface{}{token}, &userId)
+func (t *TarantoolStore) LoadSession(ctx context.Context, token string) (models.UserSession, error) {
+	var session []models.UserSession
+	err := t.conn.CallTyped("get_session_by_user_id", []interface{}{token}, &session)
 	if err != nil {
-		return "", err
+		return models.UserSession{}, err
 	}
-	if len(userId.UserId) != 1 {
-		return "", errors.Errorf("Cannot find user with id: %s", userId)
+	if len(session) != 1 {
+		return models.UserSession{}, errors.Errorf("Cannot find user with id: %s", session)
 	} else {
-		return userId.UserId[0], nil
+		return session[0], nil
 	}
 }
 
-func (t *TarantoolStore) CreateSession(ctx context.Context, m *models.AuthInfo) (string, error) {
-	var token respCreate
+func (t *TarantoolStore) CreateSession(ctx context.Context, m *models.AuthInfo) (models.UserSession, error) {
+	var session []models.UserSession
 	authToken := uuid.Must(uuid.NewV4()).String()
 	sessionId := uuid.Must(uuid.NewV4()).String()
-	createdAt := time.Now().Format(time.RFC3339)
-	err := t.conn.CallTyped("create_session", []interface{}{sessionId, m.Id, authToken, createdAt}, &token)
-
+	err := t.conn.CallTyped("create_session", []interface{}{sessionId, m.Id, authToken}, &session)
 	if err != nil {
-		return "", err
+		return models.UserSession{}, err
 	}
-	if len(token.Token) != 1 {
-		return "", errors.Errorf("Cannot create session user with id: %s", m.Id)
+	if len(session) != 1 {
+		return models.UserSession{}, errors.Errorf("Cannot create session user with id: %s", m.Id)
 	} else {
-		return token.Token[0], nil
+		return session[0], nil
 	}
 }

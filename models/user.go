@@ -44,3 +44,10 @@ type ActiveWsUsers struct {
 	User string
 	Conn *websocket.Conn
 }
+
+type UserSession struct {
+	Id        string `json:"id" msgpack:"Id"`
+	UserId    string `json:"userId" msgpack:"user_id"`
+	Token     string `json:"token" msgpack:"token"`
+	CreatedAt uint64 `json:"createdAt" msgpack:"created_at"`
+}

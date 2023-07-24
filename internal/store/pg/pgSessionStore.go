@@ -8,28 +8,28 @@ import (
 	"time"
 )
 
-func (pg *Postgres) LoadSession(ctx context.Context, token string) (string, error) {
-	query := `SELECT user_id FROM social.session WHERE token = $1`
+func (pg *Postgres) LoadSession(ctx context.Context, token string) (models.UserSession, error) {
+	query := `SELECT id, user_id, token, created_at FROM social.session WHERE token = $1`
 	//cont, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
 	//defer cancel()
 	row := pg.db.QueryRow(ctx, query, token)
-	var userId string
-	err := row.Scan(&userId)
+	var userSession models.UserSession
+	err := row.Scan(&userSession)
 	if err != nil {
-		return "", fmt.Errorf("unable to scan row: %w", err)
+		return userSession, fmt.Errorf("unable to scan row: %w", err)
 	}
-	return userId, nil
+	return userSession, nil
 }
 
-func (pg *Postgres) CreateSession(ctx context.Context, m *models.AuthInfo) (string, error) {
+func (pg *Postgres) CreateSession(ctx context.Context, m *models.AuthInfo) (models.UserSession, error) {
 	query := `INSERT INTO social.session (user_id, token, created_at) 
 VALUES ($1, $2, $3)
 ON CONFLICT (user_id) DO UPDATE
   SET created_at = now()
-returning token;`
+returning id, user_id, token, created_at;`
 	authToken := uuid.Must(uuid.NewV4()).String()
-	var token string
-	_ = pg.db.QueryRow(ctx, query, m.Id, authToken, time.Now()).Scan(&token)
+	var userSession models.UserSession
+	_ = pg.db.QueryRow(ctx, query, m.Id, authToken, time.Now()).Scan(&userSession)
 
-	return token, nil
+	return userSession, nil
 }

@@ -12,7 +12,6 @@ type Instance struct {
 	sessionStore     store.SessionStore
 	postStore        store.PostStore
 	friendStore      store.FriendStore
-	dialogueStore    store.DialogueStore
 	readStorages     *store.ReadNodes
 	Queue            queue.FeedQueue
 	cache            cache.Cache
@@ -25,7 +24,6 @@ func NewInstance(
 	sessionStore store.SessionStore,
 	postStore store.PostStore,
 	friendStore store.FriendStore,
-	dialogueStore store.DialogueStore,
 	readStorages *store.ReadNodes,
 	rabbit queue.FeedQueue,
 	cache cache.Cache,
@@ -37,7 +35,6 @@ func NewInstance(
 		sessionStore:     sessionStore,
 		postStore:        postStore,
 		friendStore:      friendStore,
-		dialogueStore:    dialogueStore,
 		readStorages:     readStorages,
 		Queue:            rabbit,
 		cache:            cache,

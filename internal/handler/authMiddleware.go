@@ -20,8 +20,8 @@ func (i *Instance) BasicAuth(next http.Handler) http.Handler {
 			if e != nil {
 				log.Println(e)
 			}
-			if len(user) > 0 {
-				ctx := context.WithValue(r.Context(), "userId", user)
+			if len(user.UserId) > 0 {
+				ctx := context.WithValue(r.Context(), "userId", user.UserId)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			} else {

@@ -1,0 +1,18 @@
+syntax = "proto3";
+package tokens;
+option go_package="../pkg/tokenservice;tokenservice";
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  string id = 1;
+  string userId = 2;
+  string token = 3;
+  uint64 createdAt = 4;
+}
+
+service ValidateToken {
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse) {}
+}

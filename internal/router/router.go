@@ -27,8 +27,6 @@ func NewRouter(i *handler.Instance) http.Handler {
 		r.Get("/post/feed", i.HandleFeed)
 		r.HandleFunc("/post/feed/posted", i.HandlePostedWs)
 
-		r.Get("/dialog/{user_id}/list", i.GetMessages)
-		r.Post("/dialog/{user_id}/send", i.SendMessage)
 	})
 
 	r.Post("/login", i.HandleLogin)

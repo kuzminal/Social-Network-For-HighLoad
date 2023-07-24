@@ -28,6 +28,7 @@ var (
 )
 
 func main() {
+	port := helper.GetEnvValue("PORT", "8080")
 	initDb()
 	initQueue()
 	initTarantoolDb()
@@ -41,7 +42,6 @@ func main() {
 		tarantoolMaster,
 		master,
 		master,
-		master,
 		&tarantoolReadNodes,
 		queues,
 		tarant,
@@ -49,6 +49,7 @@ func main() {
 		disconnectToWsChan,
 	)
 	r := router.NewRouter(app)
+	go service.NewTokenServiceServer(tarantoolMaster)
 
 	go store.HealthCheck(&tarantoolReadNodes)
 
@@ -71,7 +72,7 @@ func main() {
 	go feedService.UpdateCacheForFriends()
 	go feedService.AddActiveClient(connectToWsChan)
 	go feedService.DeleteActiveClient(disconnectToWsChan)
-	log.Fatalln(http.ListenAndServe(":8080", r))
+	log.Fatalln(http.ListenAndServe(":"+port, r))
 }
 
 func initDb() {
