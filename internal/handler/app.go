@@ -3,6 +3,7 @@ package handler
 import (
 	"SocialNetHL/internal/cache"
 	"SocialNetHL/internal/queue"
+	"SocialNetHL/internal/session"
 	"SocialNetHL/internal/store"
 	"SocialNetHL/models"
 )
@@ -17,6 +18,7 @@ type Instance struct {
 	cache            cache.Cache
 	connectToWs      chan models.ActiveWsUsers
 	disconnectFromWs chan models.ActiveWsUsers
+	sessionPublisher session.Publisher
 }
 
 func NewInstance(
@@ -29,6 +31,7 @@ func NewInstance(
 	cache cache.Cache,
 	connectToWs chan models.ActiveWsUsers,
 	disconnectFromWs chan models.ActiveWsUsers,
+	sessionPublisher session.Publisher,
 ) *Instance {
 	return &Instance{
 		userStore:        userStore,
@@ -40,5 +43,6 @@ func NewInstance(
 		cache:            cache,
 		connectToWs:      connectToWs,
 		disconnectFromWs: disconnectFromWs,
+		sessionPublisher: sessionPublisher,
 	}
 }

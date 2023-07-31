@@ -5,8 +5,8 @@ import (
 	"SocialNetHL/internal/store"
 	"SocialNetHL/pkg/tokenservice"
 	"context"
-	"fmt"
 	"google.golang.org/grpc"
+	"log"
 	"net"
 )
 
@@ -35,7 +35,7 @@ func (s *Server) ValidateToken(ctx context.Context, request *tokenservice.Valida
 
 func NewTokenServiceServer(store store.SessionStore) *Server {
 	port := helper.GetEnvValue("RPC_SERVER_PORT", "50051")
-	fmt.Println("Starting server ...")
+	log.Printf("Starting gRPC server on port: %v", port)
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		panic(err)

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/vmihailenco/msgpack/v5"
 	"net/http"
 )
 
@@ -47,6 +48,8 @@ func (i *Instance) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	passHash := fmt.Sprintf("%x", sha256.Sum256([]byte(authInfo.Password)))
 	if len(userInfo.Id) > 0 && passHash == userInfo.Password {
 		saveUser, err := i.sessionStore.CreateSession(context.Background(), &authInfo)
+		userSessionDTO, _ := msgpack.Marshal(saveUser)
+		go i.sessionPublisher.SendSessionInfo(context.Background(), userSessionDTO)
 		if err != nil {
 			return
 		}

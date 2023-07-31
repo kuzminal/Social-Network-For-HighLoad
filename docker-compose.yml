@@ -7,6 +7,8 @@ services:
       context: .
     entrypoint: /usr/bin/social
     restart: on-failure
+    networks:
+      - social
     environment:
       - PGHOST=master
       - PGPORT=5432
@@ -20,8 +22,10 @@ services:
       - RABBIT_HOST=rabbitmq
       - RABBIT_USER=user
       - RABBIT_PASSWORD=password
+      - KAFKA_BROKER_HOST=kafka
     ports:
-      - "8080-8085:8080"
+      - "8080:8080"
+      - "50051:50051"
     depends_on:
       - rabbitmq
       - master
@@ -30,6 +34,8 @@ services:
     image: rabbitmq:3.10.7-management-alpine
     hostname: rabbitmq
     restart: always
+    networks:
+      - social
     environment:
       - RABBITMQ_DEFAULT_USER=user
       - RABBITMQ_DEFAULT_PASS=password
@@ -45,6 +51,8 @@ services:
       context: .
     image: tarantool/tarantool:2.11.0
     restart: always
+    networks:
+      - social
     environment:
       - TARANTOOL_USER_NAME=user
       - TARANTOOL_USER_PASSWORD=password
@@ -56,6 +64,8 @@ services:
       context: .
     image: tarantool/tarantool:2.11.0
     restart: always
+    networks:
+      - social
     environment:
       - TARANTOOL_USER_NAME=user
       - TARANTOOL_USER_PASSWORD=password
@@ -67,6 +77,8 @@ services:
     image: "citusdata/citus:11.3.0"
     ports: [ "${COORDINATOR_EXTERNAL_PORT:-5432}:5432" ]
     labels: [ "com.citusdata.role=Master" ]
+    networks:
+      - social
     environment: &AUTH
       POSTGRES_USER: "${POSTGRES_USER:-postgres}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
@@ -79,6 +91,8 @@ services:
     deploy:
       replicas: 2
     depends_on: [ manager ]
+    networks:
+      - social
     environment: *AUTH
     command: "/wait-for-manager.sh"
     volumes:
@@ -86,10 +100,46 @@ services:
   manager:
     container_name: "${COMPOSE_PROJECT_NAME:-citus}_manager"
     image: "citusdata/membership-manager:0.3.0"
+    networks:
+      - social
     volumes:
       - "${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock"
       - healthcheck-volume:/healthcheck
     depends_on: [ master ]
     environment: *AUTH
+
+  kafka:
+    image: docker.io/bitnami/kafka:3.5
+    networks:
+      - social
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    volumes:
+      - "kafka_data:/bitnami"
+    environment:
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    restart: "no"
+    networks:
+      - social
+    ports:
+      - "9900:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka:9092"
+      JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
+    depends_on:
+      - "kafka"
+
 volumes:
   healthcheck-volume:
+  kafka_data:
+    driver: local
+
+networks:
+  social:
+

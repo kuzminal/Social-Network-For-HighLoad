@@ -8,6 +8,7 @@ import (
 	"SocialNetHL/internal/queue"
 	"SocialNetHL/internal/router"
 	"SocialNetHL/internal/service"
+	"SocialNetHL/internal/session"
 	"SocialNetHL/internal/store"
 	"SocialNetHL/internal/store/pg"
 	"SocialNetHL/internal/store/tarantool"
@@ -36,7 +37,7 @@ func main() {
 
 	connectToWsChan := make(chan models.ActiveWsUsers, 10)
 	disconnectToWsChan := make(chan models.ActiveWsUsers, 10)
-
+	sessionPublisher := session.NewSessionPublisher()
 	app := handler.NewInstance(
 		tarantoolMaster,
 		tarantoolMaster,
@@ -47,6 +48,7 @@ func main() {
 		tarant,
 		connectToWsChan,
 		disconnectToWsChan,
+		sessionPublisher,
 	)
 	r := router.NewRouter(app)
 	go service.NewTokenServiceServer(tarantoolMaster)
@@ -72,6 +74,8 @@ func main() {
 	go feedService.UpdateCacheForFriends()
 	go feedService.AddActiveClient(connectToWsChan)
 	go feedService.DeleteActiveClient(disconnectToWsChan)
+
+	log.Printf("Starting http serer on port: %v", port)
 	log.Fatalln(http.ListenAndServe(":"+port, r))
 }
 
