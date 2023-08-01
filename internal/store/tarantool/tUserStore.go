@@ -3,6 +3,8 @@ package tarantool
 import (
 	"SocialNetHL/models"
 	"context"
+	"crypto/sha256"
+	"fmt"
 	"github.com/gofrs/uuid"
 	"github.com/pkg/errors"
 	"time"
@@ -28,7 +30,7 @@ func (t *TarantoolStore) SaveUser(ctx context.Context, user models.RegisterUser)
 	userInfo.City = user.City
 	userInfo.Biography = user.Biography
 	userInfo.Birthdate = user.Birthdate
-	userInfo.Password = user.Password
+	userInfo.Password = fmt.Sprintf("%x", sha256.Sum256([]byte(user.Password)))
 	var userId UserIdFromStore
 	err = t.conn.CallTyped("create_user",
 		[]interface{}{

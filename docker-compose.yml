@@ -1,12 +1,36 @@
 version: '3.8'
 
 services:
-  social-app:
+  reverse-proxy:
+    image: traefik:v2.4
+    networks:
+      - social
+      - social-net-dialogs_dialog
+    command:
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--tracing=true"
+    ports:
+      - "80:80"
+      - "8081:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - traefik.enable=false
+  social:
     build:
       dockerfile: Dockerfile
       context: .
     entrypoint: /usr/bin/social
     restart: on-failure
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.social.rule=Host(`localhost`)"
+      - "traefik.http.routers.social.rule=PathPrefix(`/user`) || PathPrefix(`/login`) || PathPrefix(`/post`) || PathPrefix(`/friend`)"
+      - "traefik.http.routers.social.entrypoints=web"
     networks:
       - social
     environment:
@@ -142,4 +166,6 @@ volumes:
 
 networks:
   social:
+  social-net-dialogs_dialog:
+    external: true
 

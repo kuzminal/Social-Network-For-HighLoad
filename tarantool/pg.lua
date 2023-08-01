@@ -48,6 +48,8 @@ s:create_index('search', {
     }
 })
 
+box.space.users:replace{'1', 'User', 'Name', 30, '1993-01-01', 'biography', 'Moscow', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3'}
+
 s = box.schema.space.create('sessions', { if_not_exists = true })
 s:format({
     { name = 'id', type = 'string' },
