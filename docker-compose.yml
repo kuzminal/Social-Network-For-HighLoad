@@ -5,14 +5,13 @@ services:
     image: traefik:v2.4
     networks:
       - social
-      - social-net-dialogs_dialog
     command:
       #- "--log.level=DEBUG"
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
-      - "--tracing=true"
+      #- "--tracing=true"
     ports:
       - "80:80"
       - "8081:8080"
@@ -20,22 +19,90 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
       - traefik.enable=false
-  social:
-    build:
-      dockerfile: Dockerfile
-      context: .
-    entrypoint: /usr/bin/social
-    restart: on-failure
+
+  nginx:
+    build: ./nginx
+    networks:
+      - social
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.social.rule=Host(`localhost`)"
       - "traefik.http.routers.social.rule=PathPrefix(`/user`) || PathPrefix(`/login`) || PathPrefix(`/post`) || PathPrefix(`/friend`)"
       - "traefik.http.routers.social.entrypoints=web"
+    ports:
+      - "8080:80"
+      - "50055:50051"
+    depends_on:
+      - social
+  balancer:
+    restart: always
+    networks:
+      - social
+    build:
+      context: ./haproxy
+    ports:
+      - '32700:32700'
+      - '5000:5000'
+
+  mastersoc:
+    image: 'bitnami/postgresql:15.3.0'
+    ports:
+      - '5434-5445:5432'
+    networks:
+      - social
+    volumes:
+      - 'postgresql_master_data:/bitnami/postgresql'
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=master
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl_password
+      - POSTGRESQL_USERNAME=user
+      - POSTGRESQL_PASSWORD=password
+      - POSTGRESQL_DATABASE=social
+      - POSTGRESQL_SYNCHRONOUS_COMMIT_MODE=on
+      - POSTGRESQL_NUM_SYNCHRONOUS_REPLICAS=1
+
+  slave:
+    image: 'bitnami/postgresql:15.3.0'
+    deploy:
+      replicas: 2
+    ports:
+      - '5434-5445:5432'
+    networks:
+      - social
+    depends_on:
+      - master
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl_password
+      - POSTGRESQL_MASTER_HOST=mastersoc
+      - POSTGRESQL_DATABASE=social
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+      - POSTGRESQL_USERNAME=user
+      - POSTGRESQL_PASSWORD=password
+
+  social:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    deploy:
+      replicas: 3
+    entrypoint: /usr/bin/social
+    restart: on-failure
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.social.rule=Host(`localhost`)"
+#      - "traefik.http.routers.social.rule=PathPrefix(`/user`) || PathPrefix(`/login`) || PathPrefix(`/post`) || PathPrefix(`/friend`)"
+#      - "traefik.http.routers.social.entrypoints=web"
     networks:
       - social
     environment:
-      - PGHOST=master
+      - PGHOST=mastersoc
       - PGPORT=5432
+      - PGUSER=user
+      - PGPASSWORD=password
+      - PGDBNAME=social
       - MIGR_DIR=/usr/bin/migrations
       # можно указать мастера в качестве слэйва если не настроена репликация и не поднимать еще два контейнера с БД
       #- SLAVE_HOST_PORT=db:5432
@@ -47,13 +114,45 @@ services:
       - RABBIT_USER=user
       - RABBIT_PASSWORD=password
       - KAFKA_BROKER_HOST=kafka
+      - PG_SLAVE_HOST=balancer
+      - PG_SLAVE_PORT=5000
     ports:
-      - "8080:8080"
-      - "50051:50051"
+      - "9080-9082:8080"
+      - "50051-50053:50051"
     depends_on:
       - rabbitmq
       - master
       - tarantool_master
+  dialog:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dialog.rule=Host(`localhost`)"
+      - "traefik.http.routers.dialog.rule=PathPrefix(`/dialog`)"
+      - "traefik.http.routers.dialog.entrypoints=web"
+    build: github.com/kuzminal/Social-Network-Dialogs.git
+    entrypoint: /usr/bin/dialogs
+    restart: on-failure
+    networks:
+      - social
+    environment:
+      - PORT=8080
+      - PGHOST=master
+      - PGPORT=5432
+      - MIGR_DIR=/usr/bin/migrations
+      - TARANTOOL_HOST=tarantool-dialog
+      - TARANTOOL_PORT=3301
+      - TARANTOOL_USER=user
+      - TARANTOOL_PASSWORD=password
+      - KAFKA_BROKER_HOST=kafka
+      - KAFKA_BROKER_PORT=9092
+      - RPC_SERVER_HOST=nginx
+      - RPC_SERVER_PORT=50051
+    ports:
+      - "8082:8080"
+    depends_on:
+    #  - master
+    #  - tarantool-dialog
+      - social
   rabbitmq:
     image: rabbitmq:3.10.7-management-alpine
     hostname: rabbitmq
@@ -71,8 +170,8 @@ services:
       - "5672:5672"
   tarantool_master:
     build:
-      dockerfile: tarantool/Dockerfile
-      context: .
+      dockerfile: Dockerfile
+      context: ./tarantool
     image: tarantool/tarantool:2.11.0
     restart: always
     networks:
@@ -84,9 +183,8 @@ services:
       - "3301:3301"
   tarantool_slave:
     build:
-      dockerfile: tarantool/Dockerfile
-      context: .
-    image: tarantool/tarantool:2.11.0
+      dockerfile: Dockerfile
+      context: ./tarantool
     restart: always
     networks:
       - social
@@ -96,41 +194,6 @@ services:
       - TARANTOOL_REPLICATION=user:password@tarantool_master:3301
     ports:
       - "3302:3301"
-  master:
-    container_name: "${COMPOSE_PROJECT_NAME:-citus}_master"
-    image: "citusdata/citus:11.3.0"
-    ports: [ "${COORDINATOR_EXTERNAL_PORT:-5432}:5432" ]
-    labels: [ "com.citusdata.role=Master" ]
-    networks:
-      - social
-    environment: &AUTH
-      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
-      PGUSER: "${POSTGRES_USER:-postgres}"
-      PGPASSWORD: "${POSTGRES_PASSWORD:-postgres}"
-      POSTGRES_HOST_AUTH_METHOD: "${POSTGRES_HOST_AUTH_METHOD:-trust}"
-  worker:
-    image: "citusdata/citus:11.3.0"
-    labels: [ "com.citusdata.role=Worker" ]
-    deploy:
-      replicas: 2
-    depends_on: [ manager ]
-    networks:
-      - social
-    environment: *AUTH
-    command: "/wait-for-manager.sh"
-    volumes:
-      - healthcheck-volume:/healthcheck
-  manager:
-    container_name: "${COMPOSE_PROJECT_NAME:-citus}_manager"
-    image: "citusdata/membership-manager:0.3.0"
-    networks:
-      - social
-    volumes:
-      - "${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock"
-      - healthcheck-volume:/healthcheck
-    depends_on: [ master ]
-    environment: *AUTH
 
   kafka:
     image: docker.io/bitnami/kafka:3.5
@@ -142,10 +205,14 @@ services:
     volumes:
       - "kafka_data:/bitnami"
     environment:
-      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_KRAFT_CLUSTER_ID=9If7zzYGTzWiPVrDr23nVA
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
       - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
   kafdrop:
     image: obsidiandynamics/kafdrop
     restart: "no"
@@ -158,14 +225,59 @@ services:
       JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
     depends_on:
       - "kafka"
+  #Dialog env
+  tarantool-dialog:
+    build: github.com/kuzminal/Social-Network-Dialogs.git#:tarantool
+    restart: always
+    networks:
+      - social
+    environment:
+      - TARANTOOL_USER_NAME=user
+      - TARANTOOL_USER_PASSWORD=password
+    ports:
+      - "3303:3301"
+  master:
+    container_name: "${COMPOSE_PROJECT_NAME:-citus}_master_dialog"
+    image: "citusdata/citus:11.3.0"
+    ports: [ "${COORDINATOR_EXTERNAL_PORT:-5433}:5432" ]
+    labels: [ "com.citusdata.role=Master" ]
+    networks:
+      - social
+    environment: &AUTH
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
+      PGUSER: "${POSTGRES_USER:-postgres}"
+      PGPASSWORD: "${POSTGRES_PASSWORD:-postgres}"
+      POSTGRES_HOST_AUTH_METHOD: "${POSTGRES_HOST_AUTH_METHOD:-trust}"
+  worker:
+    image: "citusdata/citus:11.3.0"
+    labels: [ "com.citusdata.role=Worker" ]
+    networks:
+      - social
+    deploy:
+      replicas: 2
+    depends_on: [ manager ]
+    environment: *AUTH
+    command: "/wait-for-manager.sh"
+    volumes:
+      - healthcheck-volume:/healthcheck
+  manager:
+    container_name: "${COMPOSE_PROJECT_NAME:-citus}_manager_dialog"
+    image: "citusdata/membership-manager:0.3.0"
+    networks:
+      - social
+    volumes:
+      - "${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock"
+      - healthcheck-volume:/healthcheck
+    depends_on: [ master ]
+    environment: *AUTH
 
 volumes:
   healthcheck-volume:
   kafka_data:
     driver: local
+  postgresql_master_data:
 
 networks:
   social:
-  social-net-dialogs_dialog:
-    external: true
 

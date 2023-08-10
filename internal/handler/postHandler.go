@@ -100,7 +100,7 @@ func (i *Instance) HandlePostUpdate(w http.ResponseWriter, r *http.Request) {
 func (i *Instance) HandleGetPost(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	//readStorage := store.GetReadNode(i.readStorages)
-	post, _ := i.postStore.GetPost(context.Background(), id)
+	post, _ := i.postReaderStore.GetPost(context.Background(), id)
 	postDTO, _ := json.Marshal(post)
 	w.Header().Add("Content-Type", "application/json")
 	w.Write(postDTO)

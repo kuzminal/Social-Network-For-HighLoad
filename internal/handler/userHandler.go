@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"SocialNetHL/internal/store"
 	"SocialNetHL/models"
 	"context"
 	"crypto/sha256"
@@ -29,7 +28,7 @@ func (i *Instance) HandleRegister(w http.ResponseWriter, r *http.Request) {
 
 func (i *Instance) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	readStorage := store.GetReadNode(i.readStorages)
+	readStorage := i.readStorages.GetReadNode()
 	user, _ := readStorage.LoadUser(context.Background(), id)
 	userDTO, _ := json.Marshal(user)
 	w.Header().Add("Content-Type", "application/json")
@@ -65,7 +64,7 @@ func (i *Instance) HandleSearchUser(w http.ResponseWriter, r *http.Request) {
 	var userSearchRequest models.UserSearchRequest
 	firstName := r.URL.Query().Get("first_name")
 	lastName := r.URL.Query().Get("last_name")
-	readStorage := store.GetReadNode(i.readStorages)
+	readStorage := i.readStorages.GetReadNode()
 	if len(firstName) > 0 || len(lastName) > 0 {
 		userSearchRequest.LastName = lastName
 		userSearchRequest.FirstName = firstName

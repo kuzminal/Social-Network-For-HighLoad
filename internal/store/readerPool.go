@@ -7,46 +7,54 @@ import (
 	"time"
 )
 
-type ReadNodes struct {
+type ReadNodes[T any] struct {
 	mu      sync.Mutex
 	Current int
-	Nodes   []Backend
+	Nodes   []Backend[T]
 }
 
-type Backend struct {
-	Store  UserStore
+type Backend[T any] struct {
+	Id     string
+	Store  T
 	IsDead bool
 }
 
-func GetReadNode(readStorage *ReadNodes) UserStore {
-	readStorage.mu.Lock()
-	storage := readStorage.Nodes[readStorage.Current]
+func NewReadNode[T any]() ReadNodes[T] {
+	return ReadNodes[T]{
+		Current: 0,
+		Nodes:   []Backend[T]{},
+	}
+}
+
+func (r ReadNodes[T]) GetReadNode() T {
+	r.mu.Lock()
+	storage := r.Nodes[r.Current]
 	if storage.IsDead {
-		if readStorage.Current == len(readStorage.Nodes)-1 {
-			readStorage.Current = 0
+		if r.Current == len(r.Nodes)-1 {
+			r.Current = 0
 		} else {
-			readStorage.Current++
+			r.Current++
 		}
 	}
-	storage = readStorage.Nodes[readStorage.Current]
-	readStorage.mu.Unlock()
+	storage = r.Nodes[r.Current]
+	r.mu.Unlock()
 	return storage.Store
 }
 
-func SetDead(b bool, readStorage *ReadNodes, backend Backend) {
-	readStorage.mu.Lock()
-	for _, bckg := range readStorage.Nodes {
-		if bckg == backend {
+func (r ReadNodes[T]) SetDead(b bool, backend Backend[T]) {
+	r.mu.Lock()
+	for _, bckg := range r.Nodes {
+		if bckg.Id == backend.Id {
 			bckg.IsDead = b
 		}
 	}
-	readStorage.mu.Unlock()
+	r.mu.Unlock()
 }
 
-func isAlive(store Store) bool {
+func isAlive(T any) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	err := store.Ping(ctx)
+	err := T.(Store).Ping(ctx)
 	if err != nil {
 		log.Printf("Unreachable host, error", err.Error())
 		return false
@@ -54,14 +62,14 @@ func isAlive(store Store) bool {
 	return true
 }
 
-func HealthCheck(readStorage *ReadNodes) {
+func (r ReadNodes[T]) HealthCheck() {
 	t := time.NewTicker(time.Minute * 1)
 	for {
 		select {
 		case <-t.C:
-			for _, backend := range readStorage.Nodes {
+			for _, backend := range r.Nodes {
 				isAlive := isAlive(backend.Store)
-				SetDead(!isAlive, readStorage, backend)
+				r.SetDead(!isAlive, backend)
 				msg := "ok"
 				if !isAlive {
 					msg = "dead"

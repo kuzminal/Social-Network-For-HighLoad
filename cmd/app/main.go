@@ -15,6 +15,7 @@ import (
 	"SocialNetHL/models"
 	"context"
 	"fmt"
+	"github.com/gofrs/uuid"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -23,8 +24,9 @@ import (
 
 var (
 	master             *pg.Postgres
+	slave              *pg.Postgres
 	tarantoolMaster    *tarantool.TarantoolStore
-	tarantoolReadNodes store.ReadNodes
+	tarantoolReadNodes store.ReadNodes[store.UserStore]
 	queues             *queue.Rabbit
 )
 
@@ -42,6 +44,7 @@ func main() {
 		tarantoolMaster,
 		tarantoolMaster,
 		master,
+		slave,
 		master,
 		&tarantoolReadNodes,
 		queues,
@@ -53,7 +56,7 @@ func main() {
 	r := router.NewRouter(app)
 	go service.NewTokenServiceServer(tarantoolMaster)
 
-	go store.HealthCheck(&tarantoolReadNodes)
+	go tarantoolReadNodes.HealthCheck()
 
 	postChan := make(chan models.Post, 10)
 	cacheCh := make(chan models.UpdateFeedRequest, 10)
@@ -80,9 +83,19 @@ func main() {
 }
 
 func initDb() {
-	pghost := helper.GetEnvValue("PGHOST", "localhost")
-	pgport := helper.GetEnvValue("PGPORT", "5432")
-	master, _ = pg.NewMaster(context.Background(), fmt.Sprintf("postgresql://postgres:postgres@%s:%s/postgres?sslmode=disable", pghost, pgport))
+	pgHost := helper.GetEnvValue("PGHOST", "localhost")
+	pgPort := helper.GetEnvValue("PGPORT", "5432")
+	pgSlaveHost := helper.GetEnvValue("PG_SLAVE_HOST", "localhost")
+	pgSlavePort := helper.GetEnvValue("PG_SLAVE_PORT", "5000")
+	pgUser := helper.GetEnvValue("PGUSER", "user")
+	pgPassword := helper.GetEnvValue("PGPASSWORD", "password")
+	pgDbName := helper.GetEnvValue("PGDBNAME", "social")
+	master, _ = pg.NewMaster(
+		context.Background(),
+		fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable", pgUser, pgPassword, pgHost, pgPort, pgDbName))
+	slave, _ = pg.NewSlave(
+		context.Background(),
+		fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable", pgUser, pgPassword, pgSlaveHost, pgSlavePort, pgDbName))
 }
 
 func initQueue() {
@@ -104,15 +117,18 @@ func initTarantoolDb() {
 		",")
 
 	tarantoolMaster, _ = tarantool.NewTarantoolMaster(thost, tport, tuser, tpassword)
-	var nodes []store.Backend
+	var nodes []store.Backend[store.UserStore]
 	var storage store.UserStore
 	for _, str := range readConnStr {
 		hosts := strings.Split(str, ":")
 		storage, _ = tarantool.NewTarantoolSlave(hosts[0], hosts[1], "user", "password")
-		nodes = append(nodes, store.Backend{IsDead: false, Store: storage})
+		nodes = append(nodes, store.Backend[store.UserStore]{
+			Id:     uuid.Must(uuid.NewV4()).String(),
+			IsDead: false,
+			Store:  storage,
+		})
 	}
-	tarantoolReadNodes = store.ReadNodes{
-		Current: 0,
-		Nodes:   nodes,
-	}
+	tarantoolReadNodes = store.NewReadNode[store.UserStore]()
+	tarantoolReadNodes.Current = 0
+	tarantoolReadNodes.Nodes = nodes
 }

@@ -12,8 +12,9 @@ type Instance struct {
 	userStore        store.UserStore
 	sessionStore     store.SessionStore
 	postStore        store.PostStore
+	postReaderStore  store.PostStore
 	friendStore      store.FriendStore
-	readStorages     *store.ReadNodes
+	readStorages     *store.ReadNodes[store.UserStore]
 	Queue            queue.FeedQueue
 	cache            cache.Cache
 	connectToWs      chan models.ActiveWsUsers
@@ -25,8 +26,9 @@ func NewInstance(
 	userStore store.UserStore,
 	sessionStore store.SessionStore,
 	postStore store.PostStore,
+	postReaderStore store.PostStore,
 	friendStore store.FriendStore,
-	readStorages *store.ReadNodes,
+	readStorages *store.ReadNodes[store.UserStore],
 	rabbit queue.FeedQueue,
 	cache cache.Cache,
 	connectToWs chan models.ActiveWsUsers,
@@ -37,6 +39,7 @@ func NewInstance(
 		userStore:        userStore,
 		sessionStore:     sessionStore,
 		postStore:        postStore,
+		postReaderStore:  postReaderStore,
 		friendStore:      friendStore,
 		readStorages:     readStorages,
 		Queue:            rabbit,
