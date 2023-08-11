@@ -12,6 +12,7 @@ import (
 	"SocialNetHL/internal/store"
 	"SocialNetHL/internal/store/pg"
 	"SocialNetHL/internal/store/tarantool"
+	"SocialNetHL/internal/tracing"
 	"SocialNetHL/models"
 	"context"
 	"fmt"
@@ -32,6 +33,15 @@ var (
 
 func main() {
 	port := helper.GetEnvValue("PORT", "8080")
+
+	traceServer := helper.GetEnvValue("TRACE_SERVER", "trace")
+	tracePort := helper.GetEnvValue("TRACE_PORT", "14268")
+	tracer, err := tracing.TracerProvider(fmt.Sprintf("http://%s:%s/api/traces", traceServer, tracePort))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer tracer.Shutdown(context.Background())
+
 	initDb()
 	initQueue()
 	initTarantoolDb()
@@ -54,7 +64,7 @@ func main() {
 		sessionPublisher,
 	)
 	r := router.NewRouter(app)
-	go service.NewTokenServiceServer(tarantoolMaster)
+	go service.NewTokenServiceServer(tarantoolMaster, tracer)
 
 	go tarantoolReadNodes.HealthCheck()
 

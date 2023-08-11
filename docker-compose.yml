@@ -1,6 +1,16 @@
 version: '3.8'
 
 services:
+  trace:
+    image: jaegertracing/all-in-one:1.47.0
+    restart: on-failure
+    networks:
+      - social
+    ports:
+      - "6831:6831/udp"
+      - "16686:16686"
+      - "14268:14268"
+
   reverse-proxy:
     image: traefik:v2.4
     networks:
@@ -22,6 +32,7 @@ services:
 
   nginx:
     build: ./nginx
+    restart: on-failure
     networks:
       - social
     labels:
