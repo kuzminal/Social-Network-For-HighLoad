@@ -8,6 +8,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose"
 	"log"
+	"path/filepath"
 	"sync"
 )
 
@@ -45,7 +46,8 @@ func NewMaster(ctx context.Context, connString string) (*Postgres, error) {
 		if err != nil {
 			panic(err)
 		}
-		migrationsDir := helper.GetEnvValue("MIGR_DIR", "./internal/migrations")
+		rootFolder, _ := filepath.Abs("../../../internal/migrations")
+		migrationsDir := helper.GetEnvValue("MIGR_DIR", rootFolder)
 		err = goose.Up(mdb, migrationsDir)
 		if err != nil {
 			panic(err)
