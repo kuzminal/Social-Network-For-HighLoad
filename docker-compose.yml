@@ -11,6 +11,22 @@ services:
       - "16686:16686"
       - "14268:14268"
 
+  prometheus:
+    image: prom/prometheus
+    networks:
+      - social
+    volumes:
+      - ./metrics/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana-enterprise
+    networks:
+      - social
+    ports:
+      - "3000:3000"
+
   reverse-proxy:
     image: traefik:v2.4
     networks:

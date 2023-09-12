@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 10s #можно тут задавать глобально
+
+scrape_configs:
+  - job_name: "prometheus"
+    #scrape_interval: 10s можно тут задавать для джобы
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          cluster: "rebrain"
+  - job_name: "dialog"
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 5s 
+    static_configs:
+      - targets: ["dialog:8080"]
